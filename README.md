@@ -1,2 +1,2 @@
 # binary_systems
-Script to search for gravitational-wave signals emitted by binary systems of pulsars
+Script to search for gravitational-wave signals emitted by binary pulsar systems.
