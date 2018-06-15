@@ -1,0 +1,4 @@
+
+observation time: 12 days
+sampling rate: 256 Hz
+FFT window: flat top cosine edge
