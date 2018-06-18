@@ -26,6 +26,8 @@ from matplotlib import pyplot
 
 import tensorflow as tf
 
+import config
+
 session = tf.InteractiveSession() # TODO usare la nuova greedy mode di TensorFlow
 
 matplotlib.rcParams.update({'font.size': 25}) # il default è 10 # TODO attenzione che fa l'override di tutti i settaggi precedenti
@@ -49,11 +51,15 @@ signal_starting_frequency = 96 # Hz # TODO hardcoded
 # deconvoluzione per annullare il fringing della finestra
 # calcolo parallelo ed out-of-core su GPU
 
+# TODO calcolare out-of-core il segnale generato (per ogni chunk) e farlo per tutti e 131 i segnali di Paola con la formula corretta per la generazione del segnale. calcolare la FFT su GPU in modo da velocizzare la procedura. arrivare a sampling rate di 4096 Hz e replicare i risultati di Paola col tempo di coerenza 512 Hz e vedere cosa succede aumentandolo. analizzare i problemi derivanti dalla scelta della finestra con un dato tempo di coerenza (a seconda di quanto è il massimo df/df localmente).
+
+
 ## spindown = df/dt
 #random_multiplier = 9*numpy.random.rand()+1 # uniform from 1 to 10
 #signal_spindown = random_multiplier*-1e-9 # uniform from -10^-9 (small) to -10^-8 (big)
 
-time_sampling_rate = 256 # Hz # subsampled from 4096 Hz data # TODO hardcoded
+time_sampling_rate = config.sampling_rate # Hz
+print('sampling rate:', time_sampling_rate, 'Hz')
 time_resolution = 1/time_sampling_rate # s # time-domain time binning
 
 def round_to_power_of_two(x):
@@ -63,8 +69,9 @@ def round_to_power_of_two(x):
     return numpy.power(2, rounded_exponent)
 
 image_time_start = 0.0 # seconds
-image_time_interval = 12*day # seconds # TODO hardcoded (a potenze di 2: circa 6, 12, 24, 48 giorni)
+image_time_interval = config.observation_time # seconds (a potenze di 2: circa 6, 12, 24, 48 giorni)
 image_time_interval = round_to_power_of_two(image_time_interval)
+print('observation time:', int(image_time_interval/day), 'days')
 image_time_stop = image_time_start + image_time_interval
 
 t = numpy.arange(start=image_time_start, stop=image_time_stop, step=time_resolution, dtype=numpy.float64)
@@ -114,13 +121,14 @@ if make_plot is True:
     pyplot.xticks([0,time_sampling_rate,2*time_sampling_rate],[0,1,2]) # 2 seconds: 1 second before and 1 second after
     pyplot.xlabel('time [s]')
     pyplot.ylabel('normalized strain')
-    pyplot.savefig('./white_noise_and_injected_signal.jpg', bbox_inches='tight')
-    pyplot.savefig('./white_noise_and_injected_signal.svg', bbox_inches='tight')
+    pyplot.savefig('../media/white_noise_and_injected_signal.jpg', bbox_inches='tight')
+    pyplot.savefig('../media/white_noise_and_injected_signal.svg', bbox_inches='tight')
     pyplot.show()
     pyplot.close()
     # NOTE: the y scale is linear: the noise is gaussian around 0
 
-FFT_length = 8192 # s # frequency-domain time binning # TODO hardcoded
+FFT_length = config.FFT_length # s # frequency-domain time binning
+print('coherence time:', FFT_length, 's')
 Nyquist_frequency = time_sampling_rate/2 # 128 Hz
 number_of_time_values_in_one_FFT = FFT_length*time_sampling_rate
 unilateral_frequencies = numpy.linspace(0, Nyquist_frequency, int(number_of_time_values_in_one_FFT/2 + 1)) # TODO float32 or float64 ?
@@ -176,8 +184,8 @@ if make_plot is True:
     ax.xaxis.set_major_locator(pyplot.MultipleLocator(FFT_length/4))
     ax.set_xlabel('time [s]')
     #fig.tight_layout()
-    pyplot.savefig('./flat_top_cosine_edge_window.jpg', bbox_inches='tight')
-    pyplot.savefig('./flat_top_cosine_edge_window.svg', bbox_inches='tight')
+    pyplot.savefig('../media/flat_top_cosine_edge_window.jpg', bbox_inches='tight')
+    pyplot.savefig('../media/flat_top_cosine_edge_window.svg', bbox_inches='tight')
     pyplot.show()
     pyplot.close()
 
@@ -257,7 +265,7 @@ if make_plot is True:
     ax.set_xlabel('frequency [Hz]')
     ax.set_ylim(1e-1, 1e3)
     #pyplot.legend(loc='lower right', frameon=False)
-    pyplot.savefig('./averaged_spectrum.jpg', bbox_inches='tight')#, dpi=300)
+    pyplot.savefig('../media/averaged_spectrum.jpg', bbox_inches='tight')#, dpi=300)
     pyplot.show()
     pyplot.close()
     # TODO WISHLIST: spectrogram[all,1]
@@ -276,8 +284,8 @@ if make_plot is True:
     ax.xaxis.set_major_locator(pyplot.MultipleLocator(0.01))
     ax.set_xlabel('frequency [Hz]')
     ax.set_ylim(1e-1, 1e3)
-    pyplot.savefig('./zoomed_averaged_spectrum.jpg', bbox_inches='tight')
-    pyplot.savefig('./double_horn/coherence_{}s_observation_{}d.jpg'.format(FFT_length, int(image_time_interval/day)), bbox_inches='tight')
+    pyplot.savefig('../media/zoomed_averaged_spectrum.jpg', bbox_inches='tight')
+    pyplot.savefig('../media/double_horn/coherence_{}s_observation_{}d_sampling{}Hz.jpg'.format(FFT_length, int(image_time_interval/day), time_sampling_rate), bbox_inches='tight')
     pyplot.show()
     pyplot.close()
 # TODO fare deconvoluzione per accentuare e stringere il picco?
@@ -298,7 +306,8 @@ pyplot.ylabel('frequency [Hz]')
 pyplot.xticks(rotation='45')
 plot.colorbar.set_label('log10 values') # TODO diminuire la colorbar (shrink=0.5 ?)
 pyplot.tight_layout()
-pyplot.savefig('./white_noise_image_with_signal_scale_factor_{}.jpg'.format(signal_scale_factor), bbox_inches='tight')
+pyplot.savefig('../media/white_noise_image_with_signal_scale_factor_{}.jpg'.format(signal_scale_factor), bbox_inches='tight')
+pyplot.savefig('../media/double_horn/spectrogram_scale_factor_{}_coherence_{}s_observation_{}d_sampling{}Hz.jpg'.format(signal_scale_factor, FFT_length, int(image_time_interval/day), time_sampling_rate), bbox_inches='tight')
 pyplot.show()
 pyplot.close()
 
