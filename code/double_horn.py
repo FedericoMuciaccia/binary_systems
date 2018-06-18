@@ -103,7 +103,7 @@ def signal_waveform(t):
     # ==> phi(t) = 2*pi*(f_0*t + (1/2)*s*t^2 + C) # TODO capire perché è necessario mettere 'modulo 2 pi' nell'esponenziale complesso
     #signal = signal_amplitude*numpy.sin(2*numpy.pi*signal_starting_frequency*t).astype(numpy.float32) # pure sinusoid # TODO CAPIRE perché la versione con la sola sinusoide pura è micidialmente lenta
     #signal = signal_amplitude*numpy.sin(2*numpy.pi*(signal_starting_frequency + (1/2)*signal_spindown*t)*t).astype(numpy.float32) # sinusoid with spindown
-    signal = signal_amplitude*numpy.sin(2*numpy.pi*(signal_starting_frequency*t + 10*numpy.cos(2*numpy.pi*(1/(0.5*day))*t))).astype(numpy.float32) # TODO binarie con modulazione ogni 0.5 giorni fino a 2 giorni
+    signal = signal_amplitude*numpy.sin(2*numpy.pi*(signal_starting_frequency*t + 10*numpy.cos(2*numpy.pi*(1/(0.5*day))*t))).astype(numpy.float32) # TODO capire il problema dell'ampiezza che sembra troppo grande rispetto a ciò che si vede nello spettrogramma # TODO binarie con modulazione ogni 0.5 giorni fino a 2 giorni
     # TODO usando invece l'esponenziale complesso serve mettere 'modulo 2 pi'
     #signal = signal_amplitude*numpy.sin(2*numpy.pi*(signal_starting_frequency*t))
     return signal
@@ -337,7 +337,7 @@ pyplot.ylabel('frequency [Hz]')
 pyplot.xticks(rotation='45')
 plot.colorbar.remove()
 pyplot.tight_layout()
-pyplot.savefig('./white_noise_peakmap_with_signal_scale_factor_{}.jpg'.format(signal_scale_factor), bbox_inches='tight')
+pyplot.savefig('../media/white_noise_peakmap_with_signal_scale_factor_{}.jpg'.format(signal_scale_factor), bbox_inches='tight')
 pyplot.show()
 pyplot.close()
 
