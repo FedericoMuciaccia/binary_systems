@@ -24,12 +24,13 @@ from matplotlib import pyplot
 
 import scipy.signal
 
-import tensorflow as tf
+#import tensorflow as tf
 
 import config
+import software_injection_config
 
 #session = tf.InteractiveSession() # TODO usare la nuova greedy mode di TensorFlow
-tf.enable_eager_execution() # TensorFlow greedy mode
+#tf.enable_eager_execution() # TensorFlow greedy mode
 
 #matplotlib.rcParams.update({'font.size': 25}) # il default è 10 # TODO attenzione che fa l'override di tutti i settaggi precedenti
 
@@ -47,14 +48,10 @@ tf.enable_eager_execution() # TensorFlow greedy mode
 
 # TODO calcolare out-of-core il segnale generato (per ogni chunk) e farlo per tutti e 131 i segnali di Paola con la formula corretta per la generazione del segnale. calcolare la FFT su GPU in modo da velocizzare la procedura. arrivare a sampling rate di 4096 Hz e replicare i risultati di Paola col tempo di coerenza 512 Hz e vedere cosa succede aumentandolo. analizzare i problemi derivanti dalla scelta della finestra con un dato tempo di coerenza (a seconda di quanto è il massimo df/df localmente).
 
-
-
-FFT_length = config.FFT_length # s # frequency-domain time binning
-print('coherence time:', FFT_length, 's')
-Nyquist_frequency = time_sampling_rate/2 # 128 Hz
-number_of_time_values_in_one_FFT = FFT_length*time_sampling_rate
-unilateral_frequencies = numpy.linspace(0, Nyquist_frequency, int(number_of_time_values_in_one_FFT/2 + 1)) # TODO float32 or float64 ?
-frequency_resolution = 1/FFT_length
+print('coherence time:', config.FFT_length, 's')
+number_of_time_values_in_one_FFT = config.FFT_length*config.sampling_rate
+unilateral_frequencies = numpy.linspace(0, config.Nyquist_frequency, int(number_of_time_values_in_one_FFT/2 + 1)) # TODO float32 or float64 ?
+frequency_resolution = 1/config.FFT_length
 
 def flat_top_cosine_edge_window(window_length = number_of_time_values_in_one_FFT):
     # 'flat top cosine edge' window function (by Sergio Frasca)
@@ -95,35 +92,44 @@ def flat_top_cosine_edge_window(window_length = number_of_time_values_in_one_FFT
     
     return factor.astype(numpy.float32) # TODO attenzionare dtype
 
-print('window function:', config.window)
-if config.window == 'flat':
-    window = numpy.ones(number_of_time_values_in_one_FFT)
-elif config.window == 'tukey':
-    window = flat_top_cosine_edge_window()
-elif config.window == 'gaussian':
-    window = scipy.signal.windows.gaussian(number_of_time_values_in_one_FFT,
-                                           number_of_time_values_in_one_FFT/8) # ±4 sigma inside the gaussian window
-else:
-    print('Error: unknown window function')
-    exit()
-# TODO vedere finestra che minimizza lo spectral leakage (per aumentare la visibilità dell'immagine)
+def generate_window():
+    print('window function:', config.window)
+    # TODO vedere finestra che minimizza lo spectral leakage (per aumentare la visibilità dell'immagine)
+    
+    if config.window == 'flat':
+        window = numpy.ones(number_of_time_values_in_one_FFT)
+    elif config.window == 'tukey':
+        window = flat_top_cosine_edge_window()
+    elif config.window == 'gaussian':
+        window = scipy.signal.windows.gaussian(number_of_time_values_in_one_FFT,
+                                               number_of_time_values_in_one_FFT/8) # ±4 sigma inside the gaussian window
+    else:
+        print('Error: unknown window function')
+        exit()
+    
+    make_plot = True
+    
+    if make_plot is True:
+        fig = pyplot.figure(figsize=[6,4])
+        ax = pyplot.subplot()
+        ax.set_title('window function', y=1.02)
+        time_values = numpy.arange(0, config.FFT_length, config.time_resolution) # TODO manca l'ultimo punto corrispondente a FFT_length
+        ax.plot(time_values, window)
+        ax.xaxis.set_major_locator(pyplot.MultipleLocator(config.FFT_length/4))
+        ax.set_xlabel('time [s]')
+        #fig.tight_layout()
+        pyplot.savefig('../media/window_function.jpg', bbox_inches='tight')
+        pyplot.savefig('../media/window_function.svg', bbox_inches='tight')
+        pyplot.show()
+        pyplot.close()
+    
+    return window
 
-if make_plot is True:
-    fig = pyplot.figure(figsize=[6,4])
-    ax = pyplot.subplot()
-    ax.set_title('window function', y=1.02)
-    time_values = numpy.arange(0, FFT_length, time_resolution) # TODO manca l'ultimo punto corrispondente a FFT_length
-    ax.plot(time_values, window)
-    ax.xaxis.set_major_locator(pyplot.MultipleLocator(FFT_length/4))
-    ax.set_xlabel('time [s]')
-    #fig.tight_layout()
-    pyplot.savefig('../media/window_function.jpg', bbox_inches='tight')
-    pyplot.savefig('../media/window_function.svg', bbox_inches='tight')
-    pyplot.show()
-    pyplot.close()
+window = generate_window()
 
-def make_chunks(time_data, stride=FFT_length/2, windowed = False):
+def make_chunks(time_data, stride=config.FFT_length/2):
     # TODO prevedere anche la possibilità di interlacciamento multiplo e non solo a 1/2 (esempio: 3/4 o 7/8)
+    number_of_time_data = len(time_data) # TODO duplicato
     number_of_chunks = int(number_of_time_data/number_of_time_values_in_one_FFT)
     chunks = numpy.split(time_data, number_of_chunks)
     time_shift = int(number_of_time_values_in_one_FFT/2)
@@ -133,22 +139,19 @@ def make_chunks(time_data, stride=FFT_length/2, windowed = False):
     # join and reorder odd and even chunks
     interlaced_chunks = numpy.transpose([chunks, middle_chunks], axes=[1,0,2]).reshape([2*number_of_chunks, -1])
     # TODO buttare l'ultimo chunk farlocco
-    if windowed is False:
-        return interlaced_chunks
-    if windowed is True:
-        #window = flat_top_cosine_edge_window()
-        windowed_interlaced_chunks = interlaced_chunks*window
-        return windowed_interlaced_chunks
+    windowed_interlaced_chunks = interlaced_chunks*window
+    return windowed_interlaced_chunks
 
-time_data = white_noise + signal
-
-del white_noise
-del signal # TODO scrivere funzione in modo che ci sia il garbage collector automaticamente
+time_data = numpy.load('./time_data.npy')
+#time_data = white_noise + signal
+#
+#del white_noise
+#del signal # TODO scrivere funzione in modo che ci sia il garbage collector automaticamente
 
 # TODO NOTA: penso che il giusto tempo di coerenza vada scelto in base a quanto varia la modulazione sinusoidale (in modo da massimizzarne la visibilità nello spettrogramma)(in pratica lo spectral leakage della finestra e la risoluzione in frequenza data dal tempo di coerenza danno il Delta_y (e il tempo di coerenza stesso dà il Delta_x), che va confrontato col Delta_x e Delta_y relativi alla modulazione sinusoidale). in pratica penso che lo spartiacque sia quando la derivata della modulazione sinusoidale eccede 1.
 # TODO poi fare anche line enhancing e denoising, in modo fa far apparire ancora di più il segnale integrato del doppio corno
 def make_whitened_spectrogram(time_data): # the fast Fourier transform needs power on two to be fast
-    windowed_interlaced_chunks = make_chunks(time_data, windowed = True)
+    windowed_interlaced_chunks = make_chunks(time_data)
     # TODO poi mettere fattore correttivo alla normalizzazione dello spettro per tenere in conto la perdita di potenza dovuta al finestramento
     print('computing the Fourier transform...')
     # TODO quando si calcola la FFT bisogna sempre soottrarre la media
@@ -168,12 +171,13 @@ def make_whitened_spectrogram(time_data): # the fast Fourier transform needs pow
     whitened_spectrogram = spectrogram/numpy.median(spectrogram)
     # TODO in realtà facendo il whitening col periodogramma si eliminano tutti quei picchi che occupano diversi bin di frequenza, dunque si ripulirebbe l'effetto di allargamento sporco dovuto alla finestra della FFT
     # TODO fare plot zoomato attorno alla riga, in modo da vedere i ghost laterali prima e dopo lo sbiancamento
-    return whitened_spectrogram # TODO valutare se inserire un dato fittizio per arrivare ad una potenza di 2
+    complex_image = numpy.transpose(unilateral_fft_data[0:-1]) # TODO creare un'altra funzione da chiamare separatamente in precedenza
+    return complex_image, whitened_spectrogram # TODO separare i due risultati da avere in output # TODO valutare se inserire un dato fittizio per arrivare ad una potenza di 2
 
-whitened_spectrogram = make_whitened_spectrogram(time_data)
+complex_image, whitened_spectrogram = make_whitened_spectrogram(time_data)
 
 frequency_pixels, time_pixels = whitened_spectrogram.shape
-image_time_axis = pandas.date_range('2018-01-01', periods=time_pixels, freq='{}s'.format(int(FFT_length/2)))
+image_time_axis = pandas.date_range('2018-01-01', periods=time_pixels, freq='{}s'.format(int(config.FFT_length/2)))
 #image_time_axis = numpy.arange(0, image_time_interval - FFT_length/2, FFT_length/2) # TODO perché attualmente stiam interlacciando solo di metà
 image_frequency_axis = unilateral_frequencies
 
@@ -184,12 +188,20 @@ whitened_spectrogram = xarray.DataArray(data=whitened_spectrogram,
                                         dims=coordinate_names, 
                                         coords=coordinate_values)
 
+complex_image = xarray.DataArray(data=complex_image, 
+                                 dims=coordinate_names, 
+                                 coords=coordinate_values)
+
 averaged_spectrum = whitened_spectrogram.mean(dim='time')
 #averaged_spectrum = numpy.mean(whitened_spectrogram, axis=1) # TODO media VS mediana? # TODO perché qui la mediana fa molto più schifo della media? # TODO mediana dello spettro VS spettro autoregressivo ?
 # TODO usando la mediana le due corna spariscono completamente!
-frequency_slice = slice(signal_starting_frequency - 0.02, signal_starting_frequency + 0.02) # TODO hardcoded
+frequency_slice = slice(software_injection_config.signal_starting_frequency - 0.02, software_injection_config.signal_starting_frequency + 0.02) # TODO hardcoded
 zoomed_whitened_spectrogram = whitened_spectrogram.sel(frequency=frequency_slice)
 zoomed_averaged_spectrum = averaged_spectrum.sel(frequency=frequency_slice)
+
+zoomed_complex_image = complex_image.sel(frequency=frequency_slice)
+
+make_plot = True
 
 if make_plot is True:
     fig = pyplot.figure(figsize=[6,4])
@@ -223,7 +235,7 @@ if make_plot is True:
     ax.set_xlabel('frequency [Hz]')
     ax.set_ylim(1e-1, 1e3)
     pyplot.savefig('../media/zoomed_averaged_spectrum.jpg', bbox_inches='tight')
-    pyplot.savefig('../media/double_horn/coherence_{}s_observation_{}d_sampling{}Hz.jpg'.format(FFT_length, int(image_time_interval/day), time_sampling_rate), bbox_inches='tight')
+    pyplot.savefig('../media/double_horn/coherence_{}s_observation_{}d_sampling{}Hz.jpg'.format(config.FFT_length, int(config.rounded_observation_time/config.day), config.sampling_rate), bbox_inches='tight')
     pyplot.show()
     pyplot.close()
 # TODO fare deconvoluzione per accentuare e stringere il picco (soprattutto dato che usando la finestra gaussiana nel tempo si sa che lo spreading in frequenza è pure gaussiano)?
@@ -240,7 +252,62 @@ numpy.save('./trial_image.npy', image)
 
 
 
-fourier = numpy.fft.fftshift(numpy.fft.fft2(normalized_image))
+# TODO vedere se la spaziatura è effettivamente un fenomeno di interferenza
+# TODO vedere se l'interferenza si mitiga o si amplifica se si mantiene la fase nell'immagine iniiziale
+# TODO plottare la fase dell'fft2 con interferenza
+# TODO vedere sovrapposizione di sinusoidi fino ad ottenere la reticolatura sull'asse x (e capire come la spaziatura macroscopica si mappa sulla struttura microscopica del segnale)
+# TODO capire il perché l'immagine risulta una V con interferenza
+# TODO fare fft2 dell'fft2 per estrarre la periodicità giornaliera invece che fare il fit (e vedere se ci sono solo le prime 4 armoniche della modulazione siderale)
+# TODO vedere di eliminare tutti i logaritmi per tenere lineare l'operazione di filtraggio
+# TODO trovare la minima ampiezza visibile per il segnale in scala lineare (e non logaritmica)
+# TODO vedere se la figura dell'fft2 cambia aumentando del 150% il tempo di osservazione
+# TODO vedere denoising/whitening dello spettrogramma con convoluzione con gaussiana multivariata
+# TODO plottare il modulo dell'fft2 in scala lineare, per evitare di essere soverchiati da tutto il noise
+# TODO scaricare la colormap per fare i plot di fase
+# TODO fare script in modo da poter eseguire tutto su wn100 o Google CoLab
+# TODO trovare un modo per cumulare il segnale col tempo di osservazione, accumulando statistica per la significatività dei risultati
+
+
+
+pyplot.imshow(normalized_image) # TODO vedere se mettere o meno il quadrato (anche nella costruzione dello spettrogramma)
+pyplot.show()
+fourier2D = numpy.fft.fftshift(numpy.fft.fft2(normalized_image - numpy.median(normalized_image)))
+pyplot.imshow(numpy.log10(numpy.abs(fourier2D)))
+pyplot.show()
+
+
+pyplot.imshow(numpy.square(numpy.abs(numpy.log10(zoomed_complex_image))))
+pyplot.show() # TODO log square abs != square abs log
+#fourier2D = numpy.fft.fftshift(numpy.fft.fft2(zoomed_complex_image))
+fourier2D = numpy.fft.fftshift(numpy.fft.fft2(numpy.log10(zoomed_complex_image))) # TODO controllare come si fa a sottrarre la media (la mediana non credo si possa usare perché il piano complesso è isomorfo a R^2 che non è un insieme ordinabile)
+#pyplot.imshow(numpy.abs(fourier2D))
+pyplot.imshow(numpy.log10(numpy.square(numpy.abs(fourier2D))))
+pyplot.show()
+#import cmocean
+pyplot.imshow(numpy.angle(zoomed_complex_image), cmap='twilight') #cmap=cmocean.cm.phase
+pyplot.colorbar()
+pyplot.show()
+pyplot.imshow(numpy.angle(fourier2D), cmap='twilight')
+pyplot.show()
+# NOTE: la precisione sulla fase immagino sia legata alla precisione temporale, che è complementare alla precisione in frequenza, necessaria per la stima spettrale
+# NOTE: il pattern di fase risulta chiaro usando FFT con basso tempo di coerenza, ma tale pattern non sembra essere agevolmente utilizzabile
+# NOTE: a naso direi che la massima precisione nel riconoscimento dell'immagine si avrà quando la pendenza della sinusoide che ci interessa sarà circa 45° (questo comporta un trade-off sia in tempo VS frequenza che in frequenza VS ampiezza della modulazione)
+
+
+pyplot.imshow(image)
+pyplot.show()
+fourier2D = numpy.fft.fftshift(numpy.fft.fft2(image - numpy.median(image)))
+pyplot.imshow(numpy.log10(numpy.abs(fourier2D)))
+pyplot.show()
+pyplot.imshow(numpy.abs(fourier2D))
+pyplot.show()
+# NOTE: non usando il logaritmo dell'immagine questa non risulta una linea ma un'insieme di punti, che hanno una trasformata di Fourier completamente diversa da quella che cerchiamo
+
+
+
+
+exit()
+
 # NOTE: computing the 2D Fourier transform is mathematically equivalent to computing the 1D transform of all the rows and then computing the 1D transform of all the columns of th result.
 # TODO fare un passabanda per eliminare le alte frequenze dall'immagine, che tipicamente sono quelle del noise. è equivalente ad uno smoothing gaussiano e dunque si sta spargendo il segnale su più bin? magari invece fare un whitening nel secondo spazio di Fourier saltando i vari picchi che probabimente riguardano il segnale (però magari per fare questa stima spettrale utilizzare una finestratura gaussiana)?
 

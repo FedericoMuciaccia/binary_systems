@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy
-import xarray
+#import xarray
 
 import tensorflow as tf
 
@@ -26,20 +26,14 @@ tf.enable_eager_execution() # TensorFlow eager mode
 
 print('sampling rate:', config.sampling_rate, 'Hz')
 
-def round_to_power_of_two(x):
-    # FFT needs a data number that is a power of 2 to be efficiently computed
-    exponent = numpy.log2(x)
-    rounded_exponent = numpy.ceil(exponent)
-    return numpy.power(2, rounded_exponent)
-
 image_time_start = 0.0 # seconds # TODO hardcoded TODO utile nel caso di real noise
-image_time_interval = round_to_power_of_two(config.observation_time) # seconds (a potenze di 2: circa 6, 12, 24, 48 giorni)
-rounded_observation_time = int(image_time_interval)
-print('(rounded) observation time:', '2^{}'.format(int(numpy.log2(rounded_observation_time))), 'seconds', '=', rounded_observation_time, 'seconds', '=~', numpy.around(image_time_interval/config.day, 2), 'days')
-image_time_stop = image_time_start + image_time_interval
+#image_time_interval = round_to_power_of_two(config.observation_time) # seconds (a potenze di 2: circa 6, 12, 24, 48 giorni)
+#rounded_observation_time = int(image_time_interval)
+print('(rounded) observation time:', '2^{}'.format(int(numpy.log2(config.rounded_observation_time))), 'seconds', '=', config.rounded_observation_time, 'seconds', '=~', numpy.around(config.rounded_observation_time/config.day, 2), 'days')
+image_time_stop = image_time_start + config.rounded_observation_time
 
 #number_of_time_data = len(t)
-number_of_time_data = int(image_time_interval * config.sampling_rate)
+number_of_time_data = int(config.rounded_observation_time * config.sampling_rate)
 
 #t = tf.linspace(start=image_time_start, stop=image_time_stop, num=image_time_interval*time_sampling_rate + 1) # last value included
 
@@ -61,24 +55,34 @@ t = numpy.arange(start=image_time_start, stop=image_time_stop, step=config.time_
 def signal_waveform():
     # TODO dato che pesa molto in memoria, generare il segnale e fare l'FFT direttamente in chunks
     
-    # signal = exp(i phi(t))
+    # signal = amplitude*exp(i phi(t))
     # phi(t) = integrate_0^t{omega(tau) d_tau}
     # omega = 2*pi*frequency
     # df/dt = s # linear (first order) spindown
     # f(t) = f_0 + s*t
-    # ==> phi(t) = integrate_0^t{2*pi*(f_0+s*tau) d_tau}
+    # phi(t) = integrate_0^t{2*pi*(f_0+s*tau) d_tau}
     # ==> phi(t) = 2*pi*(f_0*t + (1/2)*s*t^2 + C) # TODO capire perché è necessario mettere 'modulo 2 pi' nell'esponenziale complesso
     #signal = signal_amplitude*numpy.sin(2*numpy.pi*signal_starting_frequency*t).astype(numpy.float32) # pure sinusoid # TODO CAPIRE perché la versione con la sola sinusoide pura è micidialmente lenta
     #signal = signal_amplitude*numpy.sin(2*numpy.pi*(signal_starting_frequency + (1/2)*signal_spindown*t)*t).astype(numpy.float32) # sinusoid with spindown
-    signal = software_injection_config.signal_amplitude*numpy.sin(2*numpy.pi*(software_injection_config.signal_starting_frequency*t + software_injection_config.modulation_amplitude*numpy.cos(2*numpy.pi*software_injection_config.signal_modulation_frequency*t))).astype(numpy.float32)
+    
+    # signal = real(amplitude*exp(i phi(t)))
+    # omega(t) = 2*pi*nu(t)
+    # nu(t) = nu_0 + modulation_amplitude*cos(2*numpy.pi*modulation_frequency*t)
+    # phi(t) = integrate_0^t{2*pi*nu(t) d_tau}
+    # phi(t) = 2*pi*(f_0*t + (modulation_amplitude*(sin(2*numpy.pi*modulation_frequency*t)))/modulation_frequency + C)
+    
+    signal = software_injection_config.signal_amplitude*numpy.sin(2*numpy.pi*(software_injection_config.signal_starting_frequency*t + (software_injection_config.modulation_amplitude*(numpy.cos(2*numpy.pi*software_injection_config.signal_modulation_frequency*t)))/(2*numpy.pi*software_injection_config.signal_modulation_frequency)))
     # TODO usando invece l'esponenziale complesso serve mettere 'modulo 2 pi'
     #signal = signal_amplitude*numpy.sin(2*numpy.pi*(signal_starting_frequency*t))
-    return signal
+    #signal[:int(1/4*len(t))] = 0
+    #signal[int(3/4*len(t)):] = 0
+    return signal.astype(numpy.float32)
 
 signal = signal_waveform() # TODO abbastana lento
 
 time_data = white_noise + signal
 
+numpy.save('./time_data.npy', time_data)
 
 ######################
 
