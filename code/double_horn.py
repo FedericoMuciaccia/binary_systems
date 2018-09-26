@@ -266,6 +266,47 @@ numpy.save('./trial_image.npy', image)
 # TODO scaricare la colormap per fare i plot di fase
 # TODO fare script in modo da poter eseguire tutto su wn100 o Google CoLab
 # TODO trovare un modo per cumulare il segnale col tempo di osservazione, accumulando statistica per la significatività dei risultati
+# TODO sistemare il valore della fase (che sembra funzionare bene solo con la finestra flat e bassi valori del tempo di coerenza) in modo che i vari bin verticali abbiano un riferimento comune confrontabile e che dunque la derivata sia continua lungo x
+# TODO fare la derivata lungo y della fase perché sembra che questa abbia un salto attraversando la linea di segnale
+# TODO una volta sistemato il grafico della fase, rifare le fft2 nel domminio complesso per vedere se si riesce a guadagnare qualcosa sfruttando anche quella informazione
+# TODO le linee orizzontali di rumore nello spettrogramma non dovrebbero dare fastidio alla fft2 perché non dovrebbero esibire periodicità dovuta all'interferenza
+# TODO aumentando il tempo di osservazione (a parità di frequenza di modulazione del segnale) si ha interferenza ogni 1/N pixel, permettendo di selezionarne sempre di meno rispetto al totale e dunque filtrare sempre di più il segnale
+# TODO vedere se facendo una fft2 della fft2 si riescono a selezionare solo le frequenze buone/volute dell'immagine, filtrando dunque tutto ciò che non fa interferenza
+# TODO scrivere a Pep per implementare un filtro iniziale nel dominio del tempo, in modo che si abbassi il livello basale di tutti gli spettri
+
+
+original_image = image#normalized_image # TODO
+fourier2D = numpy.fft.fftshift(numpy.fft.fft2(original_image - numpy.median(original_image)))
+mask = numpy.zeros_like(fourier2D, dtype='float32') # TODO float32 VS float64
+half = int(((fourier2D.shape[1]+1)/2)-1) # TODO BUG: l'indicizzazione a partire da 0 spesso è davvero scomodissima
+index = numpy.arange(0, half).astype(int)
+multiplier = 24 # TODO hardcoded
+multiples = index[numpy.remainder(index, multiplier) == 0]
+mask[:,half + multiples] = 1
+mask[:,half - multiples] = 1
+#pyplot.imshow(mask)
+#pyplot.show()
+filtered_image = numpy.abs(numpy.fft.ifft2(fourier2D * mask)) # TODO come mai non serve rishiftare?
+#pyplot.imshow(filtered_image)
+#pyplot.show()
+
+fig, [ax1, ax2] = pyplot.subplots(nrows=2, ncols=1, sharex=True)
+ax1.set_title('original image')
+ax1.imshow(original_image)
+ax2.set_title('filtered image')
+ax2.imshow(filtered_image)
+pyplot.show()
+
+fig, [ax1, ax2] = pyplot.subplots(nrows=2, ncols=1, sharex=True)
+ax1.set_title('2D Fourier transform (log10 values)')
+ax1.imshow(numpy.log10(numpy.abs(fourier2D)))
+ax2.set_title('filter mask')
+ax2.imshow(mask)
+pyplot.show()
+
+
+exit()
+
 
 
 
@@ -274,6 +315,8 @@ pyplot.show()
 fourier2D = numpy.fft.fftshift(numpy.fft.fft2(normalized_image - numpy.median(normalized_image)))
 pyplot.imshow(numpy.log10(numpy.abs(fourier2D)))
 pyplot.show()
+# NOTE: con la finestra gaussiana il segnale appare più dolce ed uniforme rispetto alla finestra flat. vedere se però questa è effettivamente la finestra che permette di vedere il minimo segnale
+# NOTE: questa serie di plot mi sembra dare il segnale più intenso di tutti usando la finestra flat (mentre il più debole sembra essere quello derivante dall'immagine complessa)
 
 
 pyplot.imshow(numpy.square(numpy.abs(numpy.log10(zoomed_complex_image))))
@@ -292,6 +335,7 @@ pyplot.show()
 # NOTE: la precisione sulla fase immagino sia legata alla precisione temporale, che è complementare alla precisione in frequenza, necessaria per la stima spettrale
 # NOTE: il pattern di fase risulta chiaro usando FFT con basso tempo di coerenza, ma tale pattern non sembra essere agevolmente utilizzabile
 # NOTE: a naso direi che la massima precisione nel riconoscimento dell'immagine si avrà quando la pendenza della sinusoide che ci interessa sarà circa 45° (questo comporta un trade-off sia in tempo VS frequenza che in frequenza VS ampiezza della modulazione)
+# TODO forse l'accumulo di statistica può venire fatto proprio sfruttando l'interferenza dentro la fft2 per buttare tutto lo spazio intermedio
 
 
 pyplot.imshow(image)
@@ -302,6 +346,7 @@ pyplot.show()
 pyplot.imshow(numpy.abs(fourier2D))
 pyplot.show()
 # NOTE: non usando il logaritmo dell'immagine questa non risulta una linea ma un'insieme di punti, che hanno una trasformata di Fourier completamente diversa da quella che cerchiamo
+# NOTE questa serie di plot (usando il logaritmo) sembra dare un segnale molto intenso con finestra gaussiana
 
 
 

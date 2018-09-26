@@ -9,7 +9,7 @@ day = 24*hour
 sampling_rate = 512#1024#512#256 # Hz # subsampled from 4096 Hz data
 observation_time = 3*day
 FFT_length = 1024#4096#2048#8192 # seconds # frequency-domain time binning
-window = 'flat'#'gaussian' # or 'tukey' or 'flat'
+window = 'gaussian' # or 'tukey' or 'flat'
 
 time_resolution = 1/sampling_rate # s # time-domain time binning
 

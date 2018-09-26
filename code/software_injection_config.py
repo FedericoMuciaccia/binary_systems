@@ -2,7 +2,7 @@
 import config
 
 signal_starting_frequency = 96 # Hz
-signal_modulation_frequency = 3/config.rounded_observation_time#1/(0.5*config.day) # Hz # TODO binarie con modulazione di un ciclo ogni 0.5 giorni, fino a uno ogni 2 giorni
+signal_modulation_frequency = 8*3/config.rounded_observation_time#1/(0.5*config.day) # Hz # TODO binarie con modulazione di un ciclo ogni 0.5 giorni, fino a uno ogni 2 giorni
 modulation_amplitude = 0.005 # Hz
 
 ## spindown = df/dt
@@ -12,7 +12,7 @@ modulation_amplitude = 0.005 # Hz
 
 noise_amplitude = 1#1.5e-5 # deve dare 1e-6  # TODO hardcoded # TODO check normalizzazione
 
-signal_scale_factor = 0.05#0.005#0.1 # from 0.001 to 0.005 (0.1 is a huge signal) # TODO hardcoded
+signal_scale_factor = 0.003#0.005#0.05#0.005#0.1 # from 0.001 to 0.005 (0.1 is a huge signal) # TODO hardcoded
 signal_amplitude = signal_scale_factor*noise_amplitude
 
 
