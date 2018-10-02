@@ -274,6 +274,8 @@ numpy.save('./trial_image.npy', image)
 # TODO vedere se facendo una fft2 della fft2 si riescono a selezionare solo le frequenze buone/volute dell'immagine, filtrando dunque tutto ciò che non fa interferenza
 # TODO scrivere a Pep per implementare un filtro iniziale nel dominio del tempo, in modo che si abbassi il livello basale di tutti gli spettri
 
+# NOTE: fft e ifft sono effettivamente quasi la stessa operazione. cambiano solo la normalizzazione del modulo e la fase invertita
+
 
 original_image = image#normalized_image # TODO
 fourier2D = numpy.fft.fftshift(numpy.fft.fft2(original_image - numpy.median(original_image)))
@@ -284,11 +286,26 @@ multiplier = 24 # TODO hardcoded
 multiples = index[numpy.remainder(index, multiplier) == 0]
 mask[:,half + multiples] = 1
 mask[:,half - multiples] = 1
+
+#mask[:,half + multiples + 1] = 1
+#mask[:,half + multiples - 1] = 1
+#mask[:,half - multiples + 1] = 1
+#mask[:,half - multiples - 1] = 1
+mask[:,:int(half*1/2)] = 0
+mask[:,int(half*3/2):] = 0
 #pyplot.imshow(mask)
 #pyplot.show()
+
 filtered_image = numpy.abs(numpy.fft.ifft2(fourier2D * mask)) # TODO come mai non serve rishiftare?
 #pyplot.imshow(filtered_image)
 #pyplot.show()
+
+fig, [ax1, ax2] = pyplot.subplots(nrows=2, ncols=1, sharex=True)
+ax1.set_title('original image (log10 values)')
+ax1.imshow(numpy.log10(original_image))
+ax2.set_title('filtered image (log10 values)')
+ax2.imshow(numpy.log10(filtered_image))
+pyplot.show()
 
 fig, [ax1, ax2] = pyplot.subplots(nrows=2, ncols=1, sharex=True)
 ax1.set_title('original image')
@@ -303,6 +320,10 @@ ax1.imshow(numpy.log10(numpy.abs(fourier2D)))
 ax2.set_title('filter mask')
 ax2.imshow(mask)
 pyplot.show()
+
+# NOTE:
+# a R=0.004 (con finestra gaussiana, 3 giorni di osservazione, sampling a 512 Hz e fft di 1024 s) il doppio corno c'è ma è molto poco visibile (migliora abbastanza usando la finestra flat), mentre col filtro il segnale si vede benissimo.
+# a R=0.003 (con finestra gaussiana, 3 giorni di osservazione, sampling a 512 Hz e fft di 1024 s) il doppio corno è sparito totalmente (non ha la forma di corno neanche con la finestra flat), mentre col filtro il segnale si continua a vedere un poco.
 
 
 exit()
