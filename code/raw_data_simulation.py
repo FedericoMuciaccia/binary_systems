@@ -17,12 +17,12 @@
 import numpy
 #import xarray
 
-import tensorflow as tf
+#import tensorflow as tf # TODO al momento non mi funziona tensorflow-gpu
 
 import config
 import software_injection_config
 
-tf.enable_eager_execution() # TensorFlow eager mode
+#tf.enable_eager_execution() # TensorFlow eager mode
 
 print('sampling rate:', config.sampling_rate, 'Hz')
 
@@ -37,8 +37,8 @@ number_of_time_data = int(config.rounded_observation_time * config.sampling_rate
 
 #t = tf.linspace(start=image_time_start, stop=image_time_stop, num=image_time_interval*time_sampling_rate + 1) # last value included
 
-#white_noise = software_injection_config.noise_amplitude*numpy.random.normal(size=number_of_time_data).astype(numpy.float32) # gaussian noise around 0
-white_noise = tf.random_normal(shape=[number_of_time_data,], mean=0, stddev=software_injection_config.noise_amplitude).numpy()#.eval() # float32
+white_noise = software_injection_config.noise_amplitude*numpy.random.normal(size=number_of_time_data).astype(numpy.float32) # gaussian noise around 0
+#white_noise = tf.random_normal(shape=[number_of_time_data,], mean=0, stddev=software_injection_config.noise_amplitude).numpy()#.eval() # float32
 # TODO la generazione di numeri random su numpy è molto lenta perché sembra essere single-core
 
 ## spindown = df/dt

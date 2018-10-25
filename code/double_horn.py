@@ -245,12 +245,31 @@ if make_plot is True:
 image = zoomed_whitened_spectrogram
 normalized_image = numpy.log10(image)
 
-numpy.save('./trial_image.npy', image)
+numpy.save('./real_image.npy', zoomed_whitened_spectrogram)
+numpy.save('./complex_image.npy', zoomed_complex_image)
+
+#import numpy
+#import matplotlib
+#matplotlib.use('Qt5Agg')
+#from matplotlib import pyplot
+#a = numpy.load('./real_image.npy')
+#b = numpy.load('./complex_image.npy')
+##for spacing in numpy.arange(10,40):
+#if True:
+#    axis=1
+#    spacing = 32
+#    print(spacing)
+#    truncated_lentgh = numpy.floor_divide(a.shape[axis], spacing) * spacing
+#    truncated_a = a[:,:truncated_lentgh]
+#    number_of_periods = int(truncated_lentgh / spacing)
+#    A = numpy.array(numpy.split(truncated_a, number_of_periods, axis=axis)).mean(axis=0)
+#    pyplot.imshow(numpy.log(A))
+#    pyplot.show()
+#
+#exit()
 
 #normalized_image = image - image.min()
 #normalized_image = normalized_image / normalized_image.max()
-
-
 
 # TODO vedere se la spaziatura è effettivamente un fenomeno di interferenza
 # TODO vedere se l'interferenza si mitiga o si amplifica se si mantiene la fase nell'immagine iniiziale
@@ -273,6 +292,9 @@ numpy.save('./trial_image.npy', image)
 # TODO aumentando il tempo di osservazione (a parità di frequenza di modulazione del segnale) si ha interferenza ogni 1/N pixel, permettendo di selezionarne sempre di meno rispetto al totale e dunque filtrare sempre di più il segnale
 # TODO vedere se facendo una fft2 della fft2 si riescono a selezionare solo le frequenze buone/volute dell'immagine, filtrando dunque tutto ciò che non fa interferenza
 # TODO scrivere a Pep per implementare un filtro iniziale nel dominio del tempo, in modo che si abbassi il livello basale di tutti gli spettri
+# TODO vedere finestrature che vadano perfettamente a zero e che concentrino quanto più possibile il segnale in pochi bin (che che nel contenpo abbiano un basso livello di contaminazione nelle bande laterali)
+# TODO vedere come funziona la general chirplet transform per l'enhancement del doppler annuale e giornaliero e confrontarlo col possibile risultato di una deconvoluzione
+# TODO vedere come funziona la trasformata di Fourier frazionaria sui segnali delle binarie (lo spettrogramma normale risulta ruotato di un certo angolo)
 
 # NOTE: fft e ifft sono effettivamente quasi la stessa operazione. cambiano solo la normalizzazione del modulo e la fase invertita
 

@@ -23,7 +23,9 @@ noise = noise_amplitude * numpy.random.normal(size=time.size)
 #data = signal
 data = noise + signal
 
-pyplot.plot(time, data)
+#pyplot.plot(time, data)
+pyplot.plot(time, noise)
+pyplot.plot(time, signal)
 pyplot.show()
 
 ########################################
@@ -67,7 +69,7 @@ phase = numpy.angle(C)
 pyplot.pcolormesh(x, y, modulus, cmap='gray')
 pyplot.show()
 
-pyplot.pcolormesh(x, y, phase, cmap='gray')
+pyplot.pcolormesh(x, y, phase, cmap='twilight')
 pyplot.show()
 
 
