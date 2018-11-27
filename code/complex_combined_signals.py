@@ -23,6 +23,11 @@ Livingston_relative_amplitude = 0.1
 # NOTE: aumentare il tempo di coerenza condensa il segnale dentro un bin più piccolo e dunque lo fa svettare molto meglio
 # TODO fare caso asimmetrico
 # TODO introdurre anche il Doppler per il moto relativo tra detector e sorgente
+# TODO analizzare direttamente le hardware injection nei dati reali sbiancati nel dominio del tempo
+# TODO vedere se lo sbiancamento sui singoli detector non deve tenere in conto anche dell'andamento della baseline spettrale del cross-spectrum
+# TODO vedere invarianti della spectral matrix (traccia e determinante) in funzione del tempo
+# TODO vedere se aggiungere un terzo detector più scarso peggiora le cose o le lascia inalterate
+# TODO il pattern di antenna, nota la direzione di cielo in cui si sta cercando, deve essere controcorretto
 
 #time_delay_from_Hanford_to_Livingston = 0#0.05#(1/(4*signal_frequency))
 phase_delay_from_Hanford_to_Livingston = +numpy.pi/2#0
@@ -32,7 +37,7 @@ Hanford_signal = Hanford_relative_amplitude * numpy.sin(signal_omega * time)
 Hanford_noise = numpy.random.normal(size=time_samples)
 Hanford_data = Hanford_signal + Hanford_noise
 
-Livingston_signal = Livingston_relative_amplitude * numpy.sin(signal_omega * (time + time_delay_from_Hanford_to_Livingston))
+Livingston_signal = Livingston_relative_amplitude * numpy.sin(signal_omega * (time + time_delay_from_Hanford_to_Livingston)) # TODO se lo sfasamento è funzione del tempo allora questa cosa entra nell'integrale e porta dei nuovi termini (Doppler) nella forma del segnale # TODO dunque mettere la formula generale che fa l'integrazione su un qualunque andamento in frequenza della omega
 Livingston_noise = numpy.random.normal(size=time_samples)
 Livingston_data = Livingston_signal + Livingston_noise
 
@@ -79,7 +84,7 @@ spectrum = whole_spectrum
 
 
 
-
+# TODO Sergio dice che la cosa interessante e vedere se il prodotto dei quaternioni si mappa in qualche modo col prodotto delle serie di detector
 
 ## time delay corresponding to the peaks of the spectrum
 #time_delay_estimator = numpy.angle(cross_spectrum)/(2*numpy.pi*frequencies)
@@ -105,7 +110,7 @@ pyplot.plot(frequencies, spectrum)
 pyplot.title('spectral density')
 pyplot.xlim([-Nyquist_frequency, Nyquist_frequency])
 pyplot.xlim([-5, +5])
-#pyplot.ylim([0,1.2e6])
+pyplot.ylim([0,1.5e6])
 #pyplot.ylim([1e0, 1e7])
 pyplot.xlabel('frequency [Hz]')
 pyplot.ylabel('power spectral density [1/Hz]') # TODO controllare

@@ -98,6 +98,7 @@ for ifo in ["H1", "L1", "V1"]:
     d = pycbc.detector.Detector(ifo)
     dt = d.time_delay_from_detector(reference_detector, right_ascension, declination, time) # TODO vedere se è il tempo di volo
     print('H1 --> {}: {}'.format(ifo, dt))
+    # TODO il tempo di volo è dato dalla distanza-luce tra i vari detector e dall'angolo di arrivo dell'onda
 
 # f_plus and f_cross antenna pattern weights 
 #f_plus, f_cross = d.antenna_pattern(right_ascension, declination, polarization, time)
